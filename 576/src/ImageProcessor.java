@@ -35,7 +35,7 @@ public class ImageProcessor {
 						byte r = bytes[ind];
 						byte g = bytes[ind+height*width];
 						byte b = bytes[ind+height*width*2]; 
-						
+
 						int pix = 0xff000000 | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
 						//int pix = ((a << 24) + (r << 16) + (g << 8) + b);
 						img.setRGB(x,y,pix);
@@ -56,6 +56,8 @@ public class ImageProcessor {
 	public static BufferedImage displayModifiedImage(String fileName, int width, int height, 
 			int ysamp, int usamp, int vsamp, int quant) throws IOException{
 		
+		//new a two-dimention array
+		YUV a[][] = new YUV[height][width];
 		BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		
 		try {
@@ -92,14 +94,62 @@ public class ImageProcessor {
 			        int u = (int) (r*(-0.147) + g*(-0.289) + b*0.436);
 			        int v = (int) (r*(0.615) + g*(-0.515) + b*(-0.100));
 			        
-			        int newr = (int) (y*0.999 + u*0.000 + v*1.140);
-			        int newg = (int) (y*1.000 + u*(-0.395) + v*(-0.581));
-			        int newb = (int) (y*1.000 + u*2.032 + v*(-0.000)); 
-					
-					int pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
-					img.setRGB(i,j,pix);
+			        YUV yuv = new YUV();
+			        yuv.setY(y);
+			        yuv.setU(u);
+			        yuv.setV(v);
+			        
+			        a[j][i] = yuv;
 					ind++;
 				}
+			}
+			
+			  //process yuv subsampling
+			  for(int k = 0; k < height; k++){
+					for(int m = 0; m < width; m++){
+						
+						//get y
+						int newy = a[k][m].getY();
+						int newu;
+						int newv;
+						//get u, if subsampling or not
+						if(usamp==2&&((m%2)==1)){
+							if(m==351){
+								newu = a[k][m-1].getU();
+							}else{
+								newu = (a[k][m-1].getU()+a[k][m+1].getU())/2;
+							}
+						}else{
+							newu = a[k][m].getU();
+						}
+						//get u, if subsampling or not
+						if(vsamp==2&&(m%2==1)){
+							if(m==351){
+								newv = a[k][m-1].getV();
+							}else{
+								newv = (a[k][m-1].getV()+a[k][m+1].getV())/2;
+							}
+						}else{
+							newv = a[k][m].getV();
+						}
+						
+						//get new new rgb
+						int newr = (int) (newy*0.999 + newu*0.000 + newv*1.140);
+				        int newg = (int) (newy*1.000 + newu*(-0.395) + newv*(-0.581));
+				        int newb = (int) (newy*1.000 + newu*2.032 + newv*(-0.000)); 
+				        
+				        int pix = 0;
+				        if(quant==256){
+				        	pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
+				        }else if(quant==64){
+				        	pix = ((0 << 18) + (newr << 12) + (newg << 6) + newb);
+				        }else{
+				        	pix = ((0 << 12) + (newr << 6) + (newg << 3) + newb);
+				        }
+				        
+				        
+						img.setRGB(m,k,pix);
+					}
 			}
 			
 			
@@ -139,7 +189,33 @@ public class ImageProcessor {
 	
 	 }
     
-    
-
   
+}
+
+class YUV{
+	private int y;
+	private int u;
+	private int v;
+	public int getY() {
+		return y;
+	}
+	public void setY(int y) {
+		this.y = y;
+	}
+	public int getU() {
+		return u;
+	}
+	public void setU(int u) {
+		this.u = u;
+	}
+	public int getV() {
+		return v;
+	}
+	public void setV(int v) {
+		this.v = v;
+	}
+	
+	public YUV(){
+		
+	}
 }
