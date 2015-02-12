@@ -1,6 +1,8 @@
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -37,7 +39,7 @@ public class ImageProcessor {
 						byte b = bytes[ind+height*width*2]; 
 
 						int pix = 0xff000000 | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
-						//int pix = ((a << 24) + (r << 16) + (g << 8) + b);
+//						int pix = ((a << 24) + (r << 16) + (g << 8) + b);
 						img.setRGB(x,y,pix);
 						ind++;
 					}
@@ -57,7 +59,7 @@ public class ImageProcessor {
 			int ysamp, int usamp, int vsamp, int quant) throws IOException{
 		
 		//new a two-dimention array
-		YUV a[][] = new YUV[height][width];
+		YUV trans[][] = new YUV[height][width];
 		BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		
 		try {
@@ -79,27 +81,22 @@ public class ImageProcessor {
 		
 				for(int i = 0; i < width; i++){
 			 
-					byte ba = 0;
-					byte br = bytes[ind];
-					byte bg = bytes[ind+height*width];
-					byte bb = bytes[ind+height*width*2]; 
-					
-					int pixel = 0xff000000 | ((br & 0xff) << 16) | ((bg & 0xff) << 8) | (bb & 0xff);
-					
-					int r = (pixel >> 16) & 0xff;
-				    int g = (pixel >> 8) & 0xff;
-				    int b = (pixel) & 0xff;
+					byte a = 0;
+					byte r = bytes[ind];
+					byte g = bytes[ind+height*width];
+					byte b = bytes[ind+height*width*2]; 
+
 			        //get YUV
-			        int y = (int) (r*0.299 + g*0.587 +b*0.114);
-			        int u = (int) (r*(-0.147) + g*(-0.289) + b*0.436);
-			        int v = (int) (r*(0.615) + g*(-0.515) + b*(-0.100));
+			        double y = (r*0.299 + g*0.587 +b*0.114);
+			        double u = (r*(-0.147) + g*(-0.289) + b*0.436);
+			        double v = (r*(0.615) + g*(-0.515) + b*(-0.100));
 			        
 			        YUV yuv = new YUV();
 			        yuv.setY(y);
 			        yuv.setU(u);
 			        yuv.setV(v);
 			        
-			        a[j][i] = yuv;
+			        trans[j][i] = yuv;
 					ind++;
 				}
 			}
@@ -109,43 +106,41 @@ public class ImageProcessor {
 					for(int m = 0; m < width; m++){
 						
 						//get y
-						int newy = a[k][m].getY();
-						int newu;
-						int newv;
-						//get u, if subsampling or not
-						if(usamp==2&&((m%2)==1)){
-							if(m==351){
-								newu = a[k][m-1].getU();
+						double newy = trans[k][m].getY();
+						double newu;
+						double newv;
+						
+						if((m%usamp)!=0){
+							int h = m/usamp;
+							if((h+1)*usamp>=width){
+								newu = trans[k][h*usamp].getU();
 							}else{
-								newu = (a[k][m-1].getU()+a[k][m+1].getU())/2;
+								newu = (trans[k][h*usamp].getU()+trans[k][(h+1)*usamp].getU())/2;
 							}
 						}else{
-							newu = a[k][m].getU();
-						}
-						//get u, if subsampling or not
-						if(vsamp==2&&(m%2==1)){
-							if(m==351){
-								newv = a[k][m-1].getV();
-							}else{
-								newv = (a[k][m-1].getV()+a[k][m+1].getV())/2;
-							}
-						}else{
-							newv = a[k][m].getV();
+							newu = trans[k][m].getU();
 						}
 						
-						//get new new rgb
-						int newr = (int) (newy*0.999 + newu*0.000 + newv*1.140);
-				        int newg = (int) (newy*1.000 + newu*(-0.395) + newv*(-0.581));
-				        int newb = (int) (newy*1.000 + newu*2.032 + newv*(-0.000)); 
-				        
-				        int pix = 0;
-				        if(quant==256){
-				        	pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
-				        }else if(quant==64){
-				        	pix = ((0 << 18) + (newr << 12) + (newg << 6) + newb);
-				        }else{
-				        	pix = ((0 << 12) + (newr << 6) + (newg << 3) + newb);
-				        }
+						if((m%vsamp)!=0){
+							int h = m/vsamp;
+							if((h+1)*vsamp>=width){
+								newv = trans[k][h*vsamp].getV();
+							}else{
+								newv = (trans[k][h*vsamp].getV()+trans[k][(h+1)*vsamp].getV())/2;
+							}
+						}else{
+							newv = trans[k][m].getV();
+						}
+
+						
+						//rgb quantization
+						List<Integer> rgbList = rgbQuantization(newy, newu, newv, quant);
+						
+						int newr = rgbList.get(0);
+						int newg = rgbList.get(1);
+						int newb = rgbList.get(2);
+						
+				        int pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
 				        
 				        
 						img.setRGB(m,k,pix);
@@ -164,7 +159,56 @@ public class ImageProcessor {
 		
 	}
   
-    public static void main(String[] args) throws IOException {
+    private static List<Integer> rgbQuantization(double newy, double newu, double newv, int quant) {
+    	
+    	double newr = (newy*0.999 + newu*0.000 + newv*1.140);
+    	double newg = (newy*1.000 + newu*(-0.395) + newv*(-0.581));
+    	double newb = (newy*1.000 + newu*2.032 + newv*(-0.000)); 
+        
+        if(quant!=256){
+        	double a = (double)256/(double)quant;
+            
+            if((newr%a)>=(a/2)){
+            	if(((int)(newr/a)+1)==quant){
+            		newr = ((int)(newr/a))*a;
+            	}else{
+            		newr = ((int)(newr/a)+1)*a;
+            	}    	
+            }else{
+            	newr = ((int)(newr/a))*a;
+            }
+            
+            if((newg%a)>=(a/2)){
+            	if(((int)(newg/a)+1)==quant){
+            		newg = ((int)(newg/a))*a;
+            	}else{
+            		newg = ((int)(newg/a)+1)*a;
+            	}  
+            }else{
+            	newg = ((int)(newg/a))*a;
+            }
+            
+            if((newb%a)>=(a/2)){
+            	if(((int)(newb/a)+1)==quant){
+            		newb = ((int)(newb/a))*a;
+            	}else{
+            		newb = ((int)(newb/a)+1)*a;
+            	}  
+            }else{
+            	newb = ((int)(newb/a))*a;
+            }
+        }
+    	
+		List<Integer> newrgb = new ArrayList<Integer>();
+		newrgb.add((int)newr);
+		newrgb.add((int)newg);
+		newrgb.add((int)newb);
+		
+		return newrgb;
+		
+	}
+
+	public static void main(String[] args) throws IOException {
     	
     	String fileName = args[0];
     	int ysamp = Integer.parseInt(args[1]);
@@ -193,28 +237,36 @@ public class ImageProcessor {
 }
 
 class YUV{
-	private int y;
-	private int u;
-	private int v;
-	public int getY() {
+	private double y;
+	private double u;
+	private double v;
+	
+	
+	
+	public double getY() {
 		return y;
 	}
-	public void setY(int y) {
+
+	public void setY(double y) {
 		this.y = y;
 	}
-	public int getU() {
+
+	public double getU() {
 		return u;
 	}
-	public void setU(int u) {
+
+	public void setU(double u) {
 		this.u = u;
 	}
-	public int getV() {
+
+	public double getV() {
 		return v;
 	}
-	public void setV(int v) {
+
+	public void setV(double v) {
 		this.v = v;
 	}
-	
+
 	public YUV(){
 		
 	}
