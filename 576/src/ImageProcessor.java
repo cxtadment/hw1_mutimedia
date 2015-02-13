@@ -82,9 +82,13 @@ public class ImageProcessor {
 				for(int i = 0; i < width; i++){
 			 
 					byte a = 0;
-					byte r = bytes[ind];
-					byte g = bytes[ind+height*width];
-					byte b = bytes[ind+height*width*2]; 
+					byte rr = bytes[ind];
+					byte gg = bytes[ind+height*width];
+					byte bb = bytes[ind+height*width*2]; 
+					
+					int r = rr & 0xff;
+					int g = gg & 0xff;
+					int b = bb & 0xff;
 
 			        //get YUV
 			        double y = (r*0.299 + g*0.587 +b*0.114);
@@ -134,11 +138,11 @@ public class ImageProcessor {
 
 						
 						//rgb quantization
-						List<Integer> rgbList = rgbQuantization(newy, newu, newv, quant);
+						List<Double> rgbList = rgbQuantization(newy, newu, newv, quant);
 						
-						int newr = rgbList.get(0);
-						int newg = rgbList.get(1);
-						int newb = rgbList.get(2);
+						int newr = rgbList.get(0).intValue();
+						int newg = rgbList.get(1).intValue();
+						int newb = rgbList.get(2).intValue();
 						
 				        int pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
 				        
@@ -159,50 +163,63 @@ public class ImageProcessor {
 		
 	}
   
-    private static List<Integer> rgbQuantization(double newy, double newu, double newv, int quant) {
+    private static List<Double> rgbQuantization(double newy, double newu, double newv, int quant) {
     	
     	double newr = (newy*0.999 + newu*0.000 + newv*1.140);
     	double newg = (newy*1.000 + newu*(-0.395) + newv*(-0.581));
     	double newb = (newy*1.000 + newu*2.032 + newv*(-0.000)); 
+    	
+    	List<Double> newrgb = new ArrayList<Double>();
+		newrgb.add(newr);
+		newrgb.add(newg);
+		newrgb.add(newb);
         
         if(quant!=256){
         	double a = (double)256/(double)quant;
+        	
+        	for(int i=0;i<newrgb.size();i++){
+        		double item = newrgb.get(i);
+        		if((item%a)>=(a/2)){
+                	if(((int)(item/a)+1)==quant){
+                		newrgb.set(i, ((int)(item/a))*a);
+                	}else{
+                		newrgb.set(i, ((int)(item/a)+1)*a);
+                	}    	
+                }else{
+                	newrgb.set(i, ((int)(item/a))*a);
+                }
+        	}
             
-            if((newr%a)>=(a/2)){
-            	if(((int)(newr/a)+1)==quant){
-            		newr = ((int)(newr/a))*a;
-            	}else{
-            		newr = ((int)(newr/a)+1)*a;
-            	}    	
-            }else{
-            	newr = ((int)(newr/a))*a;
-            }
-            
-            if((newg%a)>=(a/2)){
-            	if(((int)(newg/a)+1)==quant){
-            		newg = ((int)(newg/a))*a;
-            	}else{
-            		newg = ((int)(newg/a)+1)*a;
-            	}  
-            }else{
-            	newg = ((int)(newg/a))*a;
-            }
-            
-            if((newb%a)>=(a/2)){
-            	if(((int)(newb/a)+1)==quant){
-            		newb = ((int)(newb/a))*a;
-            	}else{
-            		newb = ((int)(newb/a)+1)*a;
-            	}  
-            }else{
-            	newb = ((int)(newb/a))*a;
-            }
+//            if((newr%a)>=(a/2)){
+//            	if(((int)(newr/a)+1)==quant){
+//            		newr = ((int)(newr/a))*a;
+//            	}else{
+//            		newr = ((int)(newr/a)+1)*a;
+//            	}    	
+//            }else{
+//            	newr = ((int)(newr/a))*a;
+//            }
+//            
+//            if((newg%a)>=(a/2)){
+//            	if(((int)(newg/a)+1)==quant){
+//            		newg = ((int)(newg/a))*a;
+//            	}else{
+//            		newg = ((int)(newg/a)+1)*a;
+//            	}  
+//            }else{
+//            	newg = ((int)(newg/a))*a;
+//            }
+//            
+//            if((newb%a)>=(a/2)){
+//            	if(((int)(newb/a)+1)==quant){
+//            		newb = ((int)(newb/a))*a;
+//            	}else{
+//            		newb = ((int)(newb/a)+1)*a;
+//            	}  
+//            }else{
+//            	newb = ((int)(newb/a))*a;
+//            }
         }
-    	
-		List<Integer> newrgb = new ArrayList<Integer>();
-		newrgb.add((int)newr);
-		newrgb.add((int)newg);
-		newrgb.add((int)newb);
 		
 		return newrgb;
 		
