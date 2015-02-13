@@ -143,9 +143,6 @@ public class ImageProcessor {
 						int newr = rgbList.get(0).intValue();
 						int newg = rgbList.get(1).intValue();
 						int newb = rgbList.get(2).intValue();
-						if(newr<0||newg<0||newb<0){
-							System.out.println("caonima");
-						}
 						
 				        int pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
 				        
