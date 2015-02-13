@@ -143,6 +143,9 @@ public class ImageProcessor {
 						int newr = rgbList.get(0).intValue();
 						int newg = rgbList.get(1).intValue();
 						int newb = rgbList.get(2).intValue();
+						if(newr<0||newg<0||newb<0){
+							System.out.println("caonima");
+						}
 						
 				        int pix = ((0 << 24) + (newr << 16) + (newg << 8) + newb);
 				        
@@ -168,6 +171,16 @@ public class ImageProcessor {
     	double newr = (newy*0.999 + newu*0.000 + newv*1.140);
     	double newg = (newy*1.000 + newu*(-0.395) + newv*(-0.581));
     	double newb = (newy*1.000 + newu*2.032 + newv*(-0.000)); 
+
+    	if(newr<0){
+    		newr = 0;
+    	}
+    	if(newg<0){
+    		newg = 0;
+    	}
+    	if(newb<0){
+    		newb = 0;
+    	}
     	
     	List<Double> newrgb = new ArrayList<Double>();
 		newrgb.add(newr);
@@ -189,36 +202,6 @@ public class ImageProcessor {
                 	newrgb.set(i, ((int)(item/a))*a);
                 }
         	}
-            
-//            if((newr%a)>=(a/2)){
-//            	if(((int)(newr/a)+1)==quant){
-//            		newr = ((int)(newr/a))*a;
-//            	}else{
-//            		newr = ((int)(newr/a)+1)*a;
-//            	}    	
-//            }else{
-//            	newr = ((int)(newr/a))*a;
-//            }
-//            
-//            if((newg%a)>=(a/2)){
-//            	if(((int)(newg/a)+1)==quant){
-//            		newg = ((int)(newg/a))*a;
-//            	}else{
-//            		newg = ((int)(newg/a)+1)*a;
-//            	}  
-//            }else{
-//            	newg = ((int)(newg/a))*a;
-//            }
-//            
-//            if((newb%a)>=(a/2)){
-//            	if(((int)(newb/a)+1)==quant){
-//            		newb = ((int)(newb/a))*a;
-//            	}else{
-//            		newb = ((int)(newb/a)+1)*a;
-//            	}  
-//            }else{
-//            	newb = ((int)(newb/a))*a;
-//            }
         }
 		
 		return newrgb;
