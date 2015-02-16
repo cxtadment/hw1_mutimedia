@@ -110,9 +110,20 @@ public class ImageProcessor {
 					for(int m = 0; m < width; m++){
 						
 						//get y
-						double newy = trans[k][m].getY();
+						double newy;
 						double newu;
 						double newv;
+						
+						if((m%ysamp)!=0){
+							int h = m/ysamp;
+							if((h+1)*ysamp>=width){
+								newy = trans[k][h*ysamp].getY();
+							}else{
+								newy = (trans[k][h*ysamp].getY()+trans[k][(h+1)*ysamp].getY())/2;
+							}
+						}else{
+							newy = trans[k][m].getY();
+						}
 						
 						if((m%usamp)!=0){
 							int h = m/usamp;
@@ -168,15 +179,27 @@ public class ImageProcessor {
     	double newr = (newy*0.999 + newu*0.000 + newv*1.140);
     	double newg = (newy*1.000 + newu*(-0.395) + newv*(-0.581));
     	double newb = (newy*1.000 + newu*2.032 + newv*(-0.000)); 
+    	
 
     	if(newr<0){
     		newr = 0;
+    	}else if(newr>255){
+    		newr = 255;
     	}
+    	
     	if(newg<0){
     		newg = 0;
+    	}else if(newg>255){
+    		newg = 255;
     	}
     	if(newb<0){
     		newb = 0;
+    	}else if(newb>255){
+    		newb = 255;
+    	}
+    	
+    	if(newr>255||newu>255||newv>255){
+    		System.out.println("caonima");
     	}
     	
     	List<Double> newrgb = new ArrayList<Double>();
@@ -196,7 +219,7 @@ public class ImageProcessor {
                 		newrgb.set(i, ((int)(item/a)+1)*a);
                 	}    	
                 }else{
-                	newrgb.set(i, ((int)(item/a))*a);
+                	newrgb.set(i, ((int)(item/a))*a);  
                 }
         	}
         }
